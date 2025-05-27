@@ -8,9 +8,9 @@ def get_conges():
     data = request.json
     login = data.get("login")
     password = data.get("password")
-    employee_id = data.get("employee_id")
+    employee_id = data.get("employee_id")  # ou login si c'est pareil
 
-    # Authentification
+    # Authentification utilisateur
     auth_resp = requests.post(
         "https://coraud.vsactivity.com/api/login",
         headers={"Content-Type": "application/json"},
@@ -22,7 +22,7 @@ def get_conges():
 
     token = auth_resp.json().get("token")
 
-    # Requête des congés
+    # Appel solde de congés
     balance_resp = requests.get(
         f"https://coraud.vsactivity.com/api/employees/{employee_id}/leaves/balance",
         headers={"Authorization": f"Bearer {token}"}
