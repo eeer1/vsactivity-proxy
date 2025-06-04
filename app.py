@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
+import json
+from requests.structures import CaseInsensitiveDict
 
 app = Flask(__name__)
 
@@ -8,27 +10,36 @@ def get_conges():
     data = request.json
     login = data.get("login")
     password = data.get("password")
-    employee_id = data.get("employee_id")  # ou login si c'est pareil
+    employee_id = data.get("employee_id")
 
-    # Authentification utilisateur
-    auth_resp = requests.post(
-        "https://coraud.vsactivity.com/api/login",
-        headers={"Content-Type": "application/json"},
-        json={"login": login, "password": password}
-    )
+    # 1. Authentification (via code reçu)
+    url = "https://coraud.vsactivity.com/api/login"
+    headers = CaseInsensitiveDict()
+    headers["accept"] = "application/json"
+    headers["Content-Type"] = "application/json"
+
+    payload = json.dumps({
+        "login": login,
+        "password": password
+    })
+
+    auth_resp = requests.post(url, headers=headers, data=payload)
 
     if auth_resp.status_code != 200:
-        return jsonify({"error": "auth failed"}), 401
+        return jsonify({"error": "auth failed", "details": auth_resp.text}), 401
 
-    token = auth_resp.json().get("token")
+    token = json.loads(auth_resp.text)["token"]
 
-    # Appel solde de congés
-    balance_resp = requests.get(
-        f"https://coraud.vsactivity.com/api/employees/{employee_id}/leaves/balance",
-        headers={"Authorization": f"Bearer {token}"}
-    )
+    # 2. Appel VSActivity /leaves/balance
+    balance_url = f"https://coraud.vsactivity.com/api/employees/{employee_id}/leaves/balance"
+    balance_headers = {
+        "Authorization": f"Bearer {token}",
+        "accept": "application/json"
+    }
+
+    balance_resp = requests.get(balance_url, headers=balance_headers)
 
     if balance_resp.status_code != 200:
-        return jsonify({"error": "balance fetch failed"}), 400
+        return jsonify({"error": "balance fetch failed", "details": balance_resp.text}), 400
 
     return jsonify(balance_resp.json())
